@@ -1,4 +1,4 @@
-Proyek ini adalah aplikasi web sederhana yang dibuat dengan Flask dan SQLite.
+Proyek ini adalah aplikasi web sederhana yang dibuat dengan Flask dan SQLite Yang sudah diperbaiki dengan menghindari 4 kerentanan
 
 ## Fitur
 - CRUD sederhana untuk entitas `Student`.
