@@ -80,13 +80,30 @@ def index():
 @app.route('/add', methods=['POST'])
 @login_required
 def add_student():
+
+    # strip agar input seperti spasi tidak masuk
     if not current_user.is_admin():
         return redirect(url_for('unauthorized'))
     
-    name = request.form['name']
+    name = request.form['name'].strip()
     age = request.form['age']
-    grade = request.form['grade']
+    grade = request.form['grade'].strip()
     
+    # Name validation
+    if len(name) < 2 or len(name) > 100:
+        return "Invalid name length", 400
+
+    # Age validation
+    try:
+        age_int = int(age)
+        if age_int < 1 or age_int > 120:
+            return "Invalid age range", 400
+    except ValueError:
+        return "Age must be a number", 400
+
+    # Grade validation
+    if len(grade) < 2 or len(grade) > 10:
+        return "Invalid grade length", 400
 
     connection = sqlite3.connect('instance/students.db')
     cursor = connection.cursor()
@@ -97,8 +114,10 @@ def add_student():
     #     {'name': name, 'age': age, 'grade': grade}
     # )
     # db.session.commit()
-    db.session.execute(text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"), 
-                       {"name": name, "age": age, "grade": grade})
+    db.session.execute(
+        text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"), 
+        {"name": name, "age": age, "grade": grade}
+        )
     db.session.commit()
     return redirect(url_for('index'))
 
@@ -126,6 +145,22 @@ def edit_student(id):
         age = request.form['age']
         grade = request.form['grade']
         
+        # Name validation
+        if len(name) < 2 or len(name) > 100:
+            return "Invalid name length", 400
+
+        # Age validation
+        try:
+            age_int = int(age)
+            if age_int < 1 or age_int > 120:
+                return "Invalid age range", 400
+        except ValueError:
+            return "Age must be a number", 400
+
+        # Grade validation
+        if len(grade) < 2 or len(grade) > 10:
+            return "Invalid grade length", 400
+
         # RAW Query
         db.session.execute(text("UPDATE student SET name=:name, age=:age, grade=:grade WHERE id=:id"),
             {'id': id, 'name': name, 'age': age, 'grade': grade})
