@@ -4,6 +4,8 @@
 // function connectDB() {
     // Membuka koneksi ke database SQLite
     include 'app.php';
+    startSession();
+    initUsersTable(); // Initialize users table and create admin user
     $students=selectStudents();
     
 // }
@@ -22,9 +24,18 @@
         <header>
             <h1>Manajemen Siswa</h1>
             <p>Tambah, Update, Hapus dan Lihat Daftar Siswa</p>
+            <div style="text-align: right; margin-top: 10px;">
+                <?php if (isLoggedIn()): ?>
+                    <span>Logged in as: <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
+                    <a href="logout.php" class="btn btn-delete" style="margin-left: 10px;">Logout</a>
+                <?php else: ?>
+                    <a href="login.php" class="btn btn-update">Login</a>
+                <?php endif; ?>
+            </div>
         </header>
 
         <!-- Form untuk menambahkan siswa -->
+        <?php if (isAdmin()): ?>
         <section class="form-section">
             <h2>Tambah Siswa Baru</h2>
             <form action="index.php" method="POST">
@@ -40,6 +51,7 @@
                 <button type="submit" name="add">Tambah Siswa</button>
             </form>
         </section>
+        <?php endif; ?>
 
         <!-- Tabel untuk menampilkan daftar siswa -->
         <section class="students-list">
@@ -65,10 +77,14 @@
                                     <td>" . $student['name'] . "</td>
                                     <td>" . $student['age'] . "</td>
                                     <td>" . $student['grade'] . "</td>
-                                    <td>
-                                        <a href='edit.php?id=" . $student['id'] . "' class='btn btn-update'>Edit</a>
-                                        <a href='delete.php?id=" . $student['id'] . "' class='btn btn-delete' onclick='return confirm(\"Yakin ingin menghapus?\")'>Hapus</a>
-                                    </td>
+                                    <td>";
+                                if (isAdmin()) {
+                                    echo "<a href='edit.php?id=" . $student['id'] . "' class='btn btn-update'>Edit</a> ";
+                                    echo "<a href='delete.php?id=" . $student['id'] . "' class='btn btn-delete' onclick='return confirm(\"Yakin ingin menghapus?\")'>Hapus</a>";
+                                } else {
+                                    echo "<span style='color: #666;'>Login as admin to edit/delete</span>";
+                                }
+                                echo "</td>
                                 </tr>";
                             }
                         }
@@ -85,10 +101,15 @@
     <!-- PHP untuk menambahkan siswa -->
     <?php
     if (isset($_POST['add'])) {
-        $name = $_POST['name'];
-        $age = $_POST['age'];
-        $grade = $_POST['grade'];
-        addStudent($name, $age, $grade);
+        if (isAdmin()) {
+            $name = $_POST['name'];
+            $age = $_POST['age'];
+            $grade = $_POST['grade'];
+            addStudent($name, $age, $grade);
+        } else {
+            header("Location: unauthorized.php");
+            exit;
+        }
     }
 
     // PHP untuk menghapus siswa berdasarkan ID

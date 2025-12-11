@@ -7,12 +7,21 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Edit Student</h1>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>Edit Student</h1>
+            <div>
+                {% if current_user.is_authenticated %}
+                    <span class="mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">Logout</a>
+                {% endif %}
+            </div>
+        </div>
         <form method="POST">
             <input type="text" name="name" value="{{ student.name }}" required>
             <input type="number" name="age" value="{{ student.age }}" required>
             <input type="text" name="grade" value="{{ student.grade }}" required>
             <button type="submit" class="btn btn-primary">Update</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
 </body>
