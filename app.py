@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 import sqlite3
+import html
+import re
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'
@@ -26,14 +28,19 @@ def index():
 @app.route('/add', methods=['POST'])
 def add_student():
 
-    # strip agar input seperti spasi tidak masuk
     name = request.form['name'].strip()
-    age = request.form['age']
+    age = request.form['age'].strip()
     grade = request.form['grade'].strip()
+
+    # name = html.escape(request.form['name'].strip())
+    # age = html.escape(request.form['age'].strip())
+    # grade = html.escape(request.form['grade'].strip())
     
-    # Name validation
+    Name validation
     if len(name) < 2 or len(name) > 100:
         return "Invalid name length", 400
+    elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", name):
+        return "Name contains disallowed characters", 400
 
     # Age validation
     try:
@@ -42,10 +49,12 @@ def add_student():
             return "Invalid age range", 400
     except ValueError:
         return "Age must be a number", 400
-
+    
     # Grade validation
-    if len(grade) < 2 or len(grade) > 10:
-        return "Invalid grade length", 400
+        if len(grade) < 2 or len(grade) > 10:
+            return "Invalid grade length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", grade):
+            return "Grade contains disallowed characters", 400
 
     connection = sqlite3.connect('instance/students.db')
     cursor = connection.cursor()
@@ -79,9 +88,15 @@ def edit_student(id):
         age = request.form['age']
         grade = request.form['grade']
         
+        # name = html.escape(request.form['name'].strip())
+        # age = html.escape(request.form['age'].strip())
+        # grade = html.escape(request.form['grade'].strip())
+        
         # Name validation
         if len(name) < 2 or len(name) > 100:
             return "Invalid name length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", name):
+            return "Name contains disallowed characters", 400
 
         # Age validation
         try:
@@ -94,6 +109,8 @@ def edit_student(id):
         # Grade validation
         if len(grade) < 2 or len(grade) > 10:
             return "Invalid grade length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", grade):
+            return "Grade contains disallowed characters", 400
 
         # RAW Query
         db.session.execute(text("UPDATE student SET name=:name, age=:age, grade=:grade WHERE id=:id"),
@@ -112,5 +129,5 @@ def edit_student(id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)
 
