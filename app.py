@@ -1,12 +1,35 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy import text
+from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+import html
+import re
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 db = SQLAlchemy(app)
+
+# Setup Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='user')
+
+    def is_admin(self):
+        return self.role == 'admin'
+
+    def __repr__(self):
+        return f'<User {self.username}>'
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -17,41 +40,102 @@ class Student(db.Model):
     def __repr__(self):
         return f'<Student {self.name}>'
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
+        else:
+            flash('Invalid username or password', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/unauthorized')
+def unauthorized():
+    return render_template('unauthorized.html'), 403
+
 @app.route('/')
+@login_required
 def index():
     # RAW Query
     students = db.session.execute(text('SELECT * FROM student')).fetchall()
     return render_template('index.html', students=students)
 
 @app.route('/add', methods=['POST'])
+@login_required
 def add_student():
-    name = request.form['name']
-    age = request.form['age']
-    grade = request.form['grade']
+    # Pengecekan role admin
+    if not current_user.is_admin():
+        return redirect(url_for('unauthorized'))
     
+    # Strip agar input seperti spasi tidak masuk
+    name = request.form['name'].strip()
+    age = request.form['age'].strip()
+    grade = request.form['grade'].strip()
 
-    connection = sqlite3.connect('instance/students.db')
-    cursor = connection.cursor()
+    # name = html.escape(request.form['name'].strip())
+    # age = html.escape(request.form['age'].strip())
+    # grade = html.escape(request.form['grade'].strip())
+    
+    # Name validation
+    if len(name) < 2 or len(name) > 100:
+        return "Invalid name length", 400
+    elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", name):
+        return "Name contains disallowed characters", 400
 
-    # RAW Query
-    # db.session.execute(
-    #     text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"),
-    #     {'name': name, 'age': age, 'grade': grade}
-    # )
-    # db.session.commit()
+    # Age validation
+    try:
+        age_int = int(age)
+        if age_int < 1 or age_int > 120:
+            return "Invalid age range", 400
+    except ValueError:
+        return "Age must be a number", 400
+    
+    # Grade validation
+    if len(grade) < 2 or len(grade) > 10:
+        return "Invalid grade length", 400
+    elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", grade):
+        return "Grade contains disallowed characters", 400
+    
+    # query sebelum
     # query = f"INSERT INTO student (name, age, grade) VALUES ('{name}', {age}, '{grade}')"
     # cursor.execute(query)
     # connection.commit() 
     # connection.close()
     # diubah ke
-    db.session.execute(text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"), 
-                       {"name": name, "age": age, "grade": grade})
+    # Insert data menggunakan parameterized query
+    db.session.execute(
+        text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"), 
+        {"name": name, "age": age_int, "grade": grade}
+    )
     db.session.commit()
     return redirect(url_for('index'))
 
 
 @app.route('/delete/<string:id>') 
+@login_required
 def delete_student(id):
+    if not current_user.is_admin():
+        return redirect(url_for('unauthorized'))
+    
     # RAW Query
     # db.session.execute(text(f"DELETE FROM student WHERE id={id}"))
     # diubah ke
@@ -61,12 +145,40 @@ def delete_student(id):
 
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_student(id):
+    if not current_user.is_admin():
+        return redirect(url_for('unauthorized'))
+    
     if request.method == 'POST':
         name = request.form['name'] 
         age = request.form['age']
         grade = request.form['grade']
         
+        # name = html.escape(request.form['name'].strip())
+        # age = html.escape(request.form['age'].strip())
+        # grade = html.escape(request.form['grade'].strip())
+        
+        # Name validation
+        if len(name) < 2 or len(name) > 100:
+            return "Invalid name length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", name):
+            return "Name contains disallowed characters", 400
+
+        # Age validation
+        try:
+            age_int = int(age)
+            if age_int < 1 or age_int > 120:
+                return "Invalid age range", 400
+        except ValueError:
+            return "Age must be a number", 400
+
+        # Grade validation
+        if len(grade) < 2 or len(grade) > 10:
+            return "Invalid grade length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", grade):
+            return "Grade contains disallowed characters", 400
+
         # RAW Query
         # db.session.execute(text(f"UPDATE student SET name='{name}', age={age}, grade='{grade}' WHERE id={id}"))
         # diubah menjadi
@@ -86,5 +198,16 @@ def edit_student(id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # Create default admin user if not exists
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(
+                username='admin',
+                password=generate_password_hash('password'),
+                role='admin'
+            )
+            db.session.add(admin)
+            db.session.commit()
     app.run(host='0.0.0.0', port=5000, debug=True)
+
 

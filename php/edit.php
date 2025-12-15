@@ -1,5 +1,10 @@
 <?php
     include 'app.php'; 
+    startSession();
+    initUsersTable();
+    
+    // Check if user is logged in as admin
+    requireAdmin();
 
     if (isset($_GET['id'])) {
         $id = $_GET['id'];
@@ -30,6 +35,12 @@
         <header>
             <h1>Update Data Siswa</h1>
             <p>Perbarui informasi siswa yang telah ada</p>
+            <div style="text-align: right; margin-top: 10px;">
+                <?php if (isLoggedIn()): ?>
+                    <span>Logged in as: <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
+                    <a href="logout.php" class="btn btn-delete" style="margin-left: 10px;">Logout</a>
+                <?php endif; ?>
+            </div>
         </header>
 
         <section class="form-section">

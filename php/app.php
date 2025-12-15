@@ -132,3 +132,76 @@ function updateStudent($id, $name, $age, $grade) {
         echo "Gagal koneksi ke database.";
     }
 }
+
+// Session management functions
+function startSession() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+}
+
+function isLoggedIn() {
+    startSession();
+    return isset($_SESSION['user_id']) && isset($_SESSION['username']);
+}
+
+function isAdmin() {
+    startSession();
+    return isLoggedIn() && isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+}
+
+function requireAdmin() {
+    if (!isAdmin()) {
+        header("Location: unauthorized.php");
+        exit;
+    }
+}
+
+function requireLogin() {
+    if (!isLoggedIn()) {
+        header("Location: login.php");
+        exit;
+    }
+}
+
+// Function to authenticate user
+function authenticateUser($username, $password) {
+    $db = connectDB();
+    if ($db) {
+        $username = $db->escapeString($username);
+        $query = "SELECT * FROM users WHERE username = '$username'";
+        $result = $db->query($query);
+        
+        if ($result) {
+            $user = $result->fetchArray(SQLITE3_ASSOC);
+            if ($user && password_verify($password, $user['password'])) {
+                return $user;
+            }
+        }
+    }
+    return false;
+}
+
+// Function to initialize users table and create admin user
+function initUsersTable() {
+    $db = connectDB();
+    if ($db) {
+        // Create users table if not exists
+        $createTable = "CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user'
+        )";
+        $db->exec($createTable);
+        
+        // Check if admin user exists
+        $checkAdmin = $db->query("SELECT * FROM users WHERE username = 'admin'");
+        if (!$checkAdmin->fetchArray()) {
+            // Create default admin user
+            $hashedPassword = password_hash('password', PASSWORD_DEFAULT);
+            $insertAdmin = "INSERT INTO users (username, password, role) VALUES ('admin', '$hashedPassword', 'admin')";
+            $db->exec($insertAdmin);
+        }
+    }
+}

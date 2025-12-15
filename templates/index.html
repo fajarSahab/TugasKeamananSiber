@@ -7,13 +7,21 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Students</h1>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>Students</h1>
+            <div>
+                <span class="mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">Logout</a>
+            </div>
+        </div>
+        {% if current_user.is_admin() %}
         <form action="/add" method="POST">
             <input type="text" name="name" placeholder="Name" required>
             <input type="number" name="age" placeholder="Age" required>
             <input type="text" name="grade" placeholder="Grade" required>
             <button type="submit" class="btn btn-primary">Add Student</button>
         </form>
+        {% endif %}
         <table class="table mt-3">
             <thead>
                 <tr>
@@ -26,12 +34,16 @@
             <tbody>
                 {% for student in students %}
                 <tr>
-                    <td>{{ student.name|safe }}</td>
+                    <td>{{ student.name }}</td>
                     <td>{{ student.age }}</td>
                     <td>{{ student.grade }}</td>
                     <td>
-                        <a href="/edit/{{ student.id }}" class="btn btn-warning">Edit</a>
-                        <a href="/delete/{{ student.id }}" class="btn btn-danger">Delete</a>
+                        {% if current_user.is_admin() %}
+                            <a href="/edit/{{ student.id }}" class="btn btn-warning">Edit</a>
+                            <a href="/delete/{{ student.id }}" class="btn btn-danger">Delete</a>
+                        {% else %}
+                            <span class="text-muted">Admin access required</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

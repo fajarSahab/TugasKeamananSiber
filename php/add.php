@@ -1,6 +1,11 @@
 <?php
 // add.php - Form untuk menambahkan data siswa
 include 'app.php'; // Menyertakan file koneksi database
+startSession();
+initUsersTable();
+
+// Check if user is logged in as admin
+requireAdmin();
 
 // Mengecek apakah form sudah disubmit
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
