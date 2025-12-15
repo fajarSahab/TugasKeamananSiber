@@ -4,6 +4,8 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from sqlalchemy import text
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+import html
+import re
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'
@@ -80,18 +82,24 @@ def index():
 @app.route('/add', methods=['POST'])
 @login_required
 def add_student():
-
-    # strip agar input seperti spasi tidak masuk
+    # Pengecekan role admin
     if not current_user.is_admin():
         return redirect(url_for('unauthorized'))
     
+    # Strip agar input seperti spasi tidak masuk
     name = request.form['name'].strip()
-    age = request.form['age']
+    age = request.form['age'].strip()
     grade = request.form['grade'].strip()
+
+    # name = html.escape(request.form['name'].strip())
+    # age = html.escape(request.form['age'].strip())
+    # grade = html.escape(request.form['grade'].strip())
     
     # Name validation
     if len(name) < 2 or len(name) > 100:
         return "Invalid name length", 400
+    elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", name):
+        return "Name contains disallowed characters", 400
 
     # Age validation
     try:
@@ -100,24 +108,18 @@ def add_student():
             return "Invalid age range", 400
     except ValueError:
         return "Age must be a number", 400
-
+    
     # Grade validation
     if len(grade) < 2 or len(grade) > 10:
         return "Invalid grade length", 400
+    elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", grade):
+        return "Grade contains disallowed characters", 400
 
-    connection = sqlite3.connect('instance/students.db')
-    cursor = connection.cursor()
-
-    # RAW Query
-    # db.session.execute(
-    #     text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"),
-    #     {'name': name, 'age': age, 'grade': grade}
-    # )
-    # db.session.commit()
+    # Insert data menggunakan parameterized query
     db.session.execute(
         text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"), 
-        {"name": name, "age": age, "grade": grade}
-        )
+        {"name": name, "age": age_int, "grade": grade}
+    )
     db.session.commit()
     return redirect(url_for('index'))
 
@@ -145,9 +147,15 @@ def edit_student(id):
         age = request.form['age']
         grade = request.form['grade']
         
+        # name = html.escape(request.form['name'].strip())
+        # age = html.escape(request.form['age'].strip())
+        # grade = html.escape(request.form['grade'].strip())
+        
         # Name validation
         if len(name) < 2 or len(name) > 100:
             return "Invalid name length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", name):
+            return "Name contains disallowed characters", 400
 
         # Age validation
         try:
@@ -160,6 +168,8 @@ def edit_student(id):
         # Grade validation
         if len(grade) < 2 or len(grade) > 10:
             return "Invalid grade length", 400
+        elif not re.match(r"^[A-Za-z0-9\s\-\'\.\,]+$", grade):
+            return "Grade contains disallowed characters", 400
 
         # RAW Query
         db.session.execute(text("UPDATE student SET name=:name, age=:age, grade=:grade WHERE id=:id"),
