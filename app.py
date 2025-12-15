@@ -39,6 +39,11 @@ def add_student():
     #     {'name': name, 'age': age, 'grade': grade}
     # )
     # db.session.commit()
+    # query = f"INSERT INTO student (name, age, grade) VALUES ('{name}', {age}, '{grade}')"
+    # cursor.execute(query)
+    # connection.commit() 
+    # connection.close()
+    # diubah ke
     db.session.execute(text("INSERT INTO student (name, age, grade) VALUES (:name, :age, :grade)"), 
                        {"name": name, "age": age, "grade": grade})
     db.session.commit()
@@ -48,6 +53,8 @@ def add_student():
 @app.route('/delete/<string:id>') 
 def delete_student(id):
     # RAW Query
+    # db.session.execute(text(f"DELETE FROM student WHERE id={id}"))
+    # diubah ke
     db.session.execute(text("DELETE FROM student WHERE id = :id"),{'id': id})
     db.session.commit()
     return redirect(url_for('index'))
@@ -56,11 +63,13 @@ def delete_student(id):
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit_student(id):
     if request.method == 'POST':
-        name = request.form['name']
+        name = request.form['name'] 
         age = request.form['age']
         grade = request.form['grade']
         
         # RAW Query
+        # db.session.execute(text(f"UPDATE student SET name='{name}', age={age}, grade='{grade}' WHERE id={id}"))
+        # diubah menjadi
         db.session.execute(text("UPDATE student SET name=:name, age=:age, grade=:grade WHERE id=:id"),
             {'id': id, 'name': name, 'age': age, 'grade': grade})
         db.session.commit()
